@@ -10,6 +10,7 @@ import android.print.PrintDocumentInfo;
 import android.print.PrinterCapabilitiesInfo;
 import android.print.PrinterId;
 import android.print.PrinterInfo;
+import android.printservice.PrintDocument;
 import android.printservice.PrintJob;
 import android.printservice.PrintService;
 import android.printservice.PrinterDiscoverySession;
@@ -22,7 +23,10 @@ import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnection
 import com.dantsu.escposprinter.exceptions.EscPosConnectionException;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FileDescriptor;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -106,28 +110,80 @@ public class MyPrintService extends PrintService {
 
     void doPrintJobOnBluetoothPrinter(PrintJob printJob)
     {
-        final FileInputStream in = new FileInputStream(printJob.getDocument().getData().getFileDescriptor());
+///////////////////////// create fileInputStream from printJob ///////////////////////////////
 
-        BufferedInputStream bis = new BufferedInputStream(in);
 
+        ParcelFileDescriptor[] fileDescriptors = null;
+
+        PrintDocument printDocument = printJob.getDocument();
+        PrintDocumentInfo printDocumentInfo = printDocument.getInfo();
+        ParcelFileDescriptor parcelFileDescriptor = printJob.getDocument().getData();
+        FileDescriptor fileDescriptor = parcelFileDescriptor.getFileDescriptor();
+        ParcelFileDescriptor readFD = null;
+        ParcelFileDescriptor writeFD = null;
+        byte[] bytes = null;
+        Bitmap bitmap = null;
+
+        FileInputStream fileInputStream = null;
+        try {
+            fileDescriptors = ParcelFileDescriptor.createPipe();
+            readFD = fileDescriptors[0];
+            writeFD = fileDescriptors[1];
+
+            fileInputStream = new FileInputStream(fileDescriptor);
+            Log.d("FileDescriptor", "document info: " + fileDescriptor.toString());
+        }
+        catch (Exception e)
+        {
+            Log.d("fileInputStream error", e.getMessage());
+        }
+//////////////////////////////////////////////////////////////////////////////////////////////
 
 //        val downloadFolder = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-//        ParcelFileDescriptor fileDesc = printJob.getDocument().getData();
-        Bitmap bitmap = BitmapFactory.decodeStream(bis);
-
-        Log.d("bitmap", bitmap != null ? " is NOT null" : " is NULL!");
 
 
-//////////////// convert the FD to bytes according to the size of the bitmap bytes  //////////////
-//            try {
-//                FileInputStream fileInputStream = new FileInputStream(printJob.getDocument().getData().getFileDescriptor());
-//                int byteLength = bitmap.getByteCount();
-//                fileContentBytes = new byte[byteLength];
-//                fileInputStream.read(fileContentBytes, 0, byteLength);
-//            } catch (IOException e) {
-//                Log.d("fileInputStream Error", e.getMessage());
-//            }
-//////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////// convert the FD to bytes according to the size of the bitmap bytes  //////////////
+        byte[] fileContentBytes = null;
+        try {
+
+            long byteLength = printDocumentInfo.getDataSize();
+            fileContentBytes = new byte[(int) byteLength];
+
+            /////////////////////////////
+            InputStream inputStream = new ParcelFileDescriptor.AutoCloseInputStream(parcelFileDescriptor);
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+
+
+                int read = -1;
+                byte[] data = new byte[(int) byteLength];
+
+                while ((inputStream.read(data, 0, data.length))  != -1) {
+                    read = inputStream.read(data, 0, data.length);
+                    byteArrayOutputStream.write(data, 0, read);
+                }
+
+                bytes = byteArrayOutputStream.toByteArray();
+                byteArrayOutputStream.flush();
+                byteArrayOutputStream.close();
+                Log.d("byteResult size", "" + bytes.length);
+
+//////////////// convert the InputStream to bitmap //////////////
+//                try {
+//                    bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+//                    Log.d("bitmap", bitmap != null ? " is NOT null" : " is NULL!");
+//                } catch (Exception e)
+//                {
+//                    Log.d("error creating bitmap", e.getMessage());
+//                }
+/////////////////////////////////////////////////////////////////////
+
+//                fileInputStream.read(printJob.getDocument().getInfo().getName(), 0,(int) byteLength);
+            } catch (Exception e) {
+                Log.d("fileInputStream Error", e.getMessage());
+            }
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////// part to write the file and then convert it to bytes  //////////////
 //        try {
@@ -198,12 +254,17 @@ public class MyPrintService extends PrintService {
 //                    Log.d("bitmapToBytes", "before time: " + (new Date()).toString());
 //                    Log.d("bitmapToBytes", "after time: " + (new Date()).toString());
 
-                    if(bitmap != null && bitmap.getByteCount() > 0) {
-                        byte[] bytes = EscPosPrinterCommands.bitmapToBytes(bitmap);
+//////////////// rest of code to convert inputstream to bitmap then to bytes ///////////////////////
+//                    bytes = printerCommands.bitmapToBytes(bitmap);
+////////////////////////////////////////////////////////////////////////////////////////////////////
+                    Log.d("byteResult size", "" + bytes.length);
+
+                    if(bytes != null && bytes.length > 0) {
+//                      byte[] bytes = EscPosPrinterCommands.bitmapToBytes(bitmap);
 
                         printerCommands.printImage(bytes);
-//                        printerCommands.printImage("This is A Test file print. \n please be cautious as to not consider this a real file!".getBytes());
-//                        printerCommands.printText("Hello Printer");
+//                      printerCommands.printImage("This is A Test file print. \n please be cautious as to not consider this a real file!".getBytes());
+//                      printerCommands.printText("Hello Printer");
                         Log.d("getAsyncEscPosPrinter", "printerCommands.printImage()");
 
                         printerCommands.feedPaper(50);
@@ -225,12 +286,6 @@ public class MyPrintService extends PrintService {
 //                new AsyncBluetoothEscPosPrint(this).execute(this.getAsyncEscPosPrinter(BluetoothPrintersConnections.selectFirstPaired(), webView));
             }catch(Exception e)
             {
-                try{
-//                    in.close();
-                } catch(Exception ee)
-                {
-
-                }
                 Log.d("createWebPrintJob Error",e.toString());
             }
         }
