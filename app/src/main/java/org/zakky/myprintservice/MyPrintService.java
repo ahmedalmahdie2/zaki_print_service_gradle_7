@@ -2,8 +2,11 @@ package org.zakky.myprintservice;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.os.Environment;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.ParcelFileDescriptor;
 import android.print.PrintAttributes;
+import android.print.PrintDocumentInfo;
 import android.print.PrinterCapabilitiesInfo;
 import android.print.PrinterId;
 import android.print.PrinterInfo;
@@ -18,19 +21,18 @@ import com.dantsu.escposprinter.EscPosPrinterCommands;
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections;
 import com.dantsu.escposprinter.exceptions.EscPosConnectionException;
 
-import java.io.BufferedWriter;
-import java.io.File;
+import java.io.BufferedInputStream;
 import java.io.FileInputStream;
-
-import java.io.FileWriter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 public class MyPrintService extends PrintService {
     private static final String PRINTER = "dummy printer";
     private static final String PRINTER_ID = "aaa";
 
+    List<PrinterInfo> printers = null;
+    PrinterInfo printerInfo = null;
+    PrinterInfo.Builder builder = null;
     @Override
     protected PrinterDiscoverySession onCreatePrinterDiscoverySession() {
         Log.d("myprinter", "MyPrintService#onCreatePrinterDiscoverySession() called");
@@ -44,21 +46,15 @@ public class MyPrintService extends PrintService {
                     return;
                 }
 
-                List<PrinterInfo> printers = new ArrayList<>();
+                printers = new ArrayList<>();
                 PrinterId printerId = generatePrinterId(PRINTER_ID);
-                PrinterInfo.Builder builder = new PrinterInfo.Builder(printerId, PRINTER, PrinterInfo.STATUS_IDLE);
-                PrinterInfo info = builder.build();
+                builder = new PrinterInfo.Builder(printerId, PRINTER, PrinterInfo.STATUS_IDLE);
+                printerInfo = builder.build();
 
-//                PrinterCapabilitiesInfo.Builder capBuilder = new PrinterCapabilitiesInfo.Builder(printerId);
-//                capBuilder.addMediaSize(PrintAttributes.MediaSize.ISO_A4, true);
-//                capBuilder.addMediaSize(PrintAttributes.MediaSize.ISO_A3, false);
-//                capBuilder.addMediaSize(PrintAttributes.MediaSize.UNKNOWN_PORTRAIT, false);
-//                capBuilder.addResolution(new PrintAttributes.Resolution("resolutionId", "default resolution", 600, 600), false);
-//                capBuilder.addResolution(new PrintAttributes.Resolution("resolutionId", "Thermal 58", 58, 600), true);
-//                capBuilder.setColorModes(PrintAttributes.COLOR_MODE_COLOR | PrintAttributes.COLOR_MODE_MONOCHROME, PrintAttributes.COLOR_MODE_COLOR);
-//                builder.setCapabilities(capBuilder.build());
-                printers.add(info);
-                addPrinters(printers);
+
+
+//                printers.add(printerInfo);
+//                addPrinters(printers);
 
             }
 
@@ -80,8 +76,8 @@ public class MyPrintService extends PrintService {
             @Override
             public void onStopPrinterStateTracking(PrinterId printerId) {
                 Log.d("myprinter", "MyPrintService#onStopPrinterStateTracking(printerId: " + printerId + ") called");
-                PrinterInfo.Builder builder = new PrinterInfo.Builder(printerId,
-                        PRINTER, PrinterInfo.STATUS_IDLE);
+
+                builder = new PrinterInfo.Builder(printerId, PRINTER, PrinterInfo.STATUS_IDLE);
                 PrinterCapabilitiesInfo.Builder capBuilder =
                         new PrinterCapabilitiesInfo.Builder(printerId);
 
@@ -95,10 +91,10 @@ public class MyPrintService extends PrintService {
 
                 PrinterCapabilitiesInfo caps = capBuilder.build();
                 builder.setCapabilities(caps);
-                PrinterInfo info = builder.build();
-                List<PrinterInfo> infos = new ArrayList<PrinterInfo>();
-                infos.add(info);
-                addPrinters(infos);
+                printerInfo = builder.build();
+                List<PrinterInfo> printers = new ArrayList();
+                printers.add(printerInfo);
+                addPrinters(printers);
             }
 
             @Override
@@ -110,16 +106,30 @@ public class MyPrintService extends PrintService {
 
     void doPrintJobOnBluetoothPrinter(PrintJob printJob)
     {
-//        final FileInputStream in = new FileInputStream(printJob.getDocument().getData().getFileDescriptor());
+        final FileInputStream in = new FileInputStream(printJob.getDocument().getData().getFileDescriptor());
 
-//        BufferedInputStream bis = new BufferedInputStream(in);
+        BufferedInputStream bis = new BufferedInputStream(in);
 
-//        FileDescriptor fileDesc = printJob.getDocument().getData().getFileDescriptor();
-//        Bitmap bitmap = BitmapFactory.decodeFileDescriptor(fileDesc);
 
 //        val downloadFolder = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-//        File fileToBePrinted = null;
-//        byte[] fileContentBytes = null;
+//        ParcelFileDescriptor fileDesc = printJob.getDocument().getData();
+        Bitmap bitmap = BitmapFactory.decodeStream(bis);
+
+        Log.d("bitmap", bitmap != null ? " is NOT null" : " is NULL!");
+
+
+//////////////// convert the FD to bytes according to the size of the bitmap bytes  //////////////
+//            try {
+//                FileInputStream fileInputStream = new FileInputStream(printJob.getDocument().getData().getFileDescriptor());
+//                int byteLength = bitmap.getByteCount();
+//                fileContentBytes = new byte[byteLength];
+//                fileInputStream.read(fileContentBytes, 0, byteLength);
+//            } catch (IOException e) {
+//                Log.d("fileInputStream Error", e.getMessage());
+//            }
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////// part to write the file and then convert it to bytes  //////////////
 //        try {
 //            BufferedWriter writer = new BufferedWriter(new FileWriter("testFile"));
 //            writer.write("This is A Test file print. \n please be cautious as to not consider this a real file!");
@@ -147,6 +157,7 @@ public class MyPrintService extends PrintService {
 //        {
 //            Log.d("File Exception", e.getMessage());
 //        }
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_GRANTED) {
 
@@ -154,21 +165,27 @@ public class MyPrintService extends PrintService {
             // Your printing code/method HERE
             try{
 
-                int targetWidth = 384;//(int) Math.floor(203 * 58 / 25.4); // 48mm printing zone with 203dpi => 383px
-//                Bitmap originalBitmap1 = ScreenShot.get(this.getApplicationContext(), webView);
-                try {
-                    Thread.sleep(2000);
-                } catch (Exception e)
-                {
-                    Log.d("getAsyncEscPosPrinter", "couldn't sleep");
-                }
+                ///////////////// some code to account for big files and wait for maybe 2 secs.
+///////////////////////////////////////////////////////////////////////////////
+//                int targetWidth = 384;//(int) Math.floor(203 * 58 / 25.4); // 48mm printing zone with 203dpi => 383px
+////                Bitmap originalBitmap1 = ScreenShot.get(this.getApplicationContext(), webView);
+//                try {
+//                    Thread.sleep(2000);
+//                } catch (Exception e)
+//                {
+//                    Log.d("getAsyncEscPosPrinter", "couldn't sleep");
+//                }
+///////////////////////////////////////////////////////////////////////////////
+
+                //// scale down the bitmap ////
+///////////////////////////////////////////////////////////////////////////////
 //                Bitmap rescaledBitmap = Bitmap.createScaledBitmap(
 //                        bitmap,
 //                        targetWidth,
 //                        Math.round(((float) bitmap.getHeight()) * ((float) targetWidth) / ((float) bitmap.getWidth())),
 //                        true
 //                );
-
+///////////////////////////////////////////////////////////////////////////////
 
                 EscPosPrinterCommands printerCommands = new EscPosPrinterCommands(BluetoothPrintersConnections.selectFirstPaired());
                 try {
@@ -179,12 +196,13 @@ public class MyPrintService extends PrintService {
                     Log.d("getAsyncEscPosPrinter", "printerCommands.reset()");
 
 //                    Log.d("bitmapToBytes", "before time: " + (new Date()).toString());
-//                    byte[] bytes = EscPosPrinterCommands.bitmapToBytes(bitmap);
 //                    Log.d("bitmapToBytes", "after time: " + (new Date()).toString());
 
-//                    if(fileContentBytes != null && fileContentBytes.length > 0) {
-//                        printerCommands.printImage(fileContentBytes);
-                        printerCommands.printImage("This is A Test file print. \n please be cautious as to not consider this a real file!".getBytes());
+                    if(bitmap != null && bitmap.getByteCount() > 0) {
+                        byte[] bytes = EscPosPrinterCommands.bitmapToBytes(bitmap);
+
+                        printerCommands.printImage(bytes);
+//                        printerCommands.printImage("This is A Test file print. \n please be cautious as to not consider this a real file!".getBytes());
 //                        printerCommands.printText("Hello Printer");
                         Log.d("getAsyncEscPosPrinter", "printerCommands.printImage()");
 
@@ -193,12 +211,12 @@ public class MyPrintService extends PrintService {
 
                         printerCommands.cutPaper();
                         Log.d("getAsyncEscPosPrinter", "printerCommands.cutPaper()");
-//                    }
-//                    else
-//                    {
-//                        Log.d("getAsyncEscPosPrinter", "empty image bytes");
-//
-//                    }
+                    }
+                    else
+                    {
+                        Log.d("getAsyncEscPosPrinter", "empty image bytes");
+
+                    }
                 } catch (EscPosConnectionException e) {
                     e.printStackTrace();
                 }
