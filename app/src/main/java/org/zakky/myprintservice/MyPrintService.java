@@ -6,9 +6,11 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.ImageReader;
+import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentInfo;
+import android.print.PrintJobInfo;
 import android.print.PrinterCapabilitiesInfo;
 import android.print.PrinterId;
 import android.print.PrinterInfo;
@@ -26,12 +28,23 @@ import com.dantsu.escposprinter.EscPosPrinterCommands;
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections;
 import com.dantsu.escposprinter.exceptions.EscPosConnectionException;
 
+import net.sf.andpdf.nio.ByteBuffer;
+
+import org.zakky.myprintservice.util.PrintUtils;
+
 import java.io.BufferedInputStream;
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -63,213 +76,80 @@ public class MyPrintService extends PrintService {
     protected PrinterDiscoverySession onCreatePrinterDiscoverySession() {
         Log.d("myprinter", "MyPrintService#onCreatePrinterDiscoverySession() called");
         return new ThermalPrinterDiscoverySession(mThermalPrinter);
-
-//        return new PrinterDiscoverySession() {
-//            @Override
-//            public void onStartPrinterDiscovery(List<PrinterId> priorityList) {
-//                Log.d("myprinter", "PrinterDiscoverySession#onStartPrinterDiscovery(priorityList: " + priorityList + ") called");
-//
-//                if (!priorityList.isEmpty()) {
-//                    return;
-//                }
-//
-//                printers = new ArrayList<>();
-//                PrinterId printerId = generatePrinterId(PRINTER_ID);
-//                builder = new PrinterInfo.Builder(printerId, PRINTER, PrinterInfo.STATUS_IDLE);
-//                printerInfo = builder.build();
-//
-//
-//
-////                printers.add(printerInfo);
-////                addPrinters(printers);
-//
-//            }
-//
-//            @Override
-//            public void onStopPrinterDiscovery() {
-//                Log.d("myprinter", "MyPrintService#onStopPrinterDiscovery() called");
-//            }
-//
-//            @Override
-//            public void onValidatePrinters(List<PrinterId> printerIds) {
-//                Log.d("myprinter", "MyPrintService#onValidatePrinters(printerIds: " + printerIds + ") called");
-//            }
-//
-//            @Override
-//            public void onStartPrinterStateTracking(PrinterId printerId) {
-//                Log.d("myprinter", "MyPrintService#onStartPrinterStateTracking(printerId: " + printerId + ") called");
-//            }
-//
-//            @Override
-//            public void onStopPrinterStateTracking(PrinterId printerId) {
-//                Log.d("myprinter", "MyPrintService#onStopPrinterStateTracking(printerId: " + printerId + ") called");
-//
-//                builder = new PrinterInfo.Builder(printerId, PRINTER, PrinterInfo.STATUS_IDLE);
-//                PrinterCapabilitiesInfo.Builder capBuilder =
-//                        new PrinterCapabilitiesInfo.Builder(printerId);
-//
-//                capBuilder.addMediaSize(PrintAttributes.MediaSize.ISO_A4, true);
-//                capBuilder.addResolution(new PrintAttributes.Resolution(
-//                        "Default", "Default", 360, 360), true);
-//                capBuilder.setColorModes(PrintAttributes.COLOR_MODE_COLOR
-//                                + PrintAttributes.COLOR_MODE_MONOCHROME,
-//                        PrintAttributes.COLOR_MODE_COLOR);
-//                capBuilder.setMinMargins(PrintAttributes.Margins.NO_MARGINS);
-//
-//                PrinterCapabilitiesInfo caps = capBuilder.build();
-//                builder.setCapabilities(caps);
-//                printerInfo = builder.build();
-//                List<PrinterInfo> printers = new ArrayList();
-//                printers.add(printerInfo);
-//                addPrinters(printers);
-//            }
-//
-//            @Override
-//            public void onDestroy() {
-//                Log.d("myprinter", "MyPrintService#onDestroy() called");
-//            }
-//        };
     }
 
     void doPrintJobOnBluetoothPrinter(PrintJob printJob)
     {
-///////////////////////// create fileInputStream from printJob ///////////////////////////////
-
-        ParcelFileDescriptor[] fileDescriptors = null;
-
-        PrintDocument printDocument = printJob.getDocument();
-        PrintDocumentInfo printDocumentInfo = printDocument.getInfo();
-        ParcelFileDescriptor parcelFileDescriptor = printJob.getDocument().getData();
-        FileDescriptor fileDescriptor = parcelFileDescriptor.getFileDescriptor();
-
         byte[] bytes = null;
         Bitmap bitmap = null;
 
-        FileInputStream fileInputStream = null;
-        try {
-//            fileDescriptors = ParcelFileDescriptor.createPipe();
 
-
-            fileInputStream = new FileInputStream(fileDescriptor);
-            Log.d("FileDescriptor", "document info: " + fileDescriptor.toString());
+        if (printJob.isQueued()) {
+            printJob.start();
         }
-        catch (Exception e)
-        {
-            Log.d("fileInputStream error", e.getMessage());
-        }
-//////////////////////////////////////////////////////////////////////////////////////////////
-
-//        val downloadFolder = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+        final PrintJobInfo info = printJob.getInfo();
+        final File file = new File(getFilesDir(), info.getLabel());
 
 
+        InputStream in = null;
+        FileOutputStream out = null;
 
-////////////// convert the FD to bytes according to the size of the print document data size  //////////////
-        byte[] fileContentBytes = null;
         try {
+            in = new FileInputStream(printJob.getDocument().getData().getFileDescriptor());
+            out = new FileOutputStream(file);
 
-            long byteLength = printDocumentInfo.getDataSize();
-
-            /////////////////////////////
-//            InputStream inputStream = new ParcelFileDescriptor.AutoCloseInputStream(parcelFileDescriptor);
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-
-
-
-                int read = -1;
-                byte[] data = new byte[1];
-
-                while ((fileInputStream.read(data, 0, data.length))  != -1) {
-                    read = fileInputStream.read(data, 0, data.length);
-                    byteArrayOutputStream.write(data, 0, read);
-                }
-
-                bytes = byteArrayOutputStream.toByteArray();
-                byteArrayOutputStream.flush();
-                byteArrayOutputStream.close();
-                Log.d("byteResult size", "" + bytes.length);
-
-
-                //////////////////////////////////////////
-
-
-
-
-            /////////////////////////////////////////
-
-//////////////// convert the InputStream to bitmap //////////////
-                try {
-                    bitmap = BitmapFactory.decodeStream(fileInputStream);
-                    Log.d("bitmap", bitmap != null ? " NOT null" : "NULL!");
-                } catch (Exception e)
-                {
-                    Log.d("error creating bitmap", e.getMessage());
-                }
-/////////////////////////////////////////////////////////////////////
-
-//                fileInputStream.read(printJob.getDocument().getInfo().getName(), 0,(int) byteLength);
-            } catch (Exception e) {
-                Log.d("fileInputStream Error", e.toString());
+            byte[] buffer = new byte[1024];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
             }
-////////////////////////////////////////////////////////////////////////////////////////////////
+            in.close();
 
-//////////////// part to write the file and then convert it to bytes  //////////////
-//        try {
-//            BufferedWriter writer = new BufferedWriter(new FileWriter("testFile"));
-//            writer.write("This is A Test file print. \n please be cautious as to not consider this a real file!");
-//            writer.close();
-//
-//            File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-//            File[] files = dir.listFiles();
-//            for (int i = 0; i < files.length; i++) {
-//                Log.d("downloads file", files[i].getName() + " Path: " + files[i].getPath());
-//                if (files[i].getName() == "sample(1)1584541496.pdf") {
-//                    Log.d("downloads file", "Found file to be printer");
-//                    fileToBePrinted = new File(files[i].getPath());
-//                }
-//            }
-//
-//            if (fileToBePrinted != null) {
-//                FileInputStream fileInputStream = new FileInputStream(fileToBePrinted);
-//
-//                long byteLength = fileToBePrinted.length(); // byte count of the file-content
-//
-//                fileContentBytes = new byte[(int) byteLength];
-//                fileInputStream.read(fileContentBytes, 0, (int) byteLength);
-//            }
-//        } catch (Exception e)
-//        {
-//            Log.d("File Exception", e.getMessage());
-//        }
-///////////////////////////////////////////////////////////////////////////////////////////////////////
+            out.flush();
+            out.close();
+
+        } catch (IOException ioe) {
+
+        }
+
+
+        FileChannel channel = null;
+        try {
+            RandomAccessFile raf = new RandomAccessFile(file, "r");
+            channel = raf.getChannel();
+            ByteBuffer bb = ByteBuffer.NEW(channel.map(
+                    FileChannel.MapMode.READ_ONLY, 0, channel.size()));
+            byte[] tempBytes = new byte[bb.remaining()];
+            bb.get(tempBytes, 0, tempBytes.length);
+
+            String base64String= Base64.encodeToString(tempBytes, 0);
+            byte[] tempBytes02 = Base64.decode(base64String, 0);
+            Log.d("bytearray base64", base64String != null ? base64String : "is NULL!");
+            FileDescriptor fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            val pdfRenderer = PdfRenderer(fileDescriptor)
+
+            val page = pdfRenderer.openPage(pageNumber)
+
+            val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
+            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+
+            page.close()
+            pdfRenderer.close()
+
+            return bitmap
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_GRANTED) {
 
             Log.d("doPrintJobOnBluetooth","bluetooth " + printJob.getDocument().getInfo().getName());
             // Your printing code/method HERE
             try{
-
-                ///////////////// some code to account for big files and wait for maybe 2 secs.
-///////////////////////////////////////////////////////////////////////////////
-//                int targetWidth = 384;//(int) Math.floor(203 * 58 / 25.4); // 48mm printing zone with 203dpi => 383px
-////                Bitmap originalBitmap1 = ScreenShot.get(this.getApplicationContext(), webView);
-//                try {
-//                    Thread.sleep(2000);
-//                } catch (Exception e)
-//                {
-//                    Log.d("getAsyncEscPosPrinter", "couldn't sleep");
-//                }
-///////////////////////////////////////////////////////////////////////////////
-
-                //// scale down the bitmap ////
-///////////////////////////////////////////////////////////////////////////////
-//                Bitmap rescaledBitmap = Bitmap.createScaledBitmap(
-//                        bitmap,
-//                        targetWidth,
-//                        Math.round(((float) bitmap.getHeight()) * ((float) targetWidth) / ((float) bitmap.getWidth())),
-//                        true
-//                );
-///////////////////////////////////////////////////////////////////////////////
-
                 EscPosPrinterCommands printerCommands = new EscPosPrinterCommands(BluetoothPrintersConnections.selectFirstPaired());
                 try {
                     printerCommands.connect();
@@ -278,29 +158,28 @@ public class MyPrintService extends PrintService {
                     printerCommands.reset();
                     Log.d("getAsyncEscPosPrinter", "printerCommands.reset()");
 
-//                    Log.d("bitmapToBytes", "before time: " + (new Date()).toString());
-//                    Log.d("bitmapToBytes", "after time: " + (new Date()).toString());
-
 //////////////// rest of code to convert inputstream to bitmap then to bytes ///////////////////////
-//                    bytes = printerCommands.bitmapToBytes(bitmap);
+//                    Bitmap rescaledBitmap = Bitmap.createScaledBitmap(
+//                        bitmap,
+//                        384,
+//                        Math.round(((float) bitmap.getHeight()) * ((float) 384) / ((float) bitmap.getWidth())),
+//                        true
+//                    );
+
+                    if(bitmap != null) {
+                        bytes = printerCommands.bitmapToBytes(bitmap);
+                    }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
                     Log.d("byteResult size", "" + bytes.length);
 
                     if(bytes != null && bytes.length > 0) {
-//                      byte[] bytes = EscPosPrinterCommands.bitmapToBytes(bitmap);
-                        String base64String= Base64.encodeToString(bytes, 0);
-                        byte[] bytearray = Base64.decode(base64String, 0);
-                        Log.d("bytearray base64", base64String != null ? base64String : "is NULL!");
 
-//                        final Bitmap bitmapFromBytes = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-//                        Log.d("bitmap", bitmapFromBytes != null ? "is NOT null" : "is NULL!");
-
-//                        printerCommands.printImage(bytearray);
+                        printerCommands.printImage(bytes);
 //                      printerCommands.printImage("This is A Test file print. \n please be cautious as to not consider this a real file!".getBytes());
 //                      printerCommands.printText(base64String);
                         Log.d("getAsyncEscPosPrinter", "printerCommands.printImage()");
 
-                        printerCommands.feedPaper(50);
+                        printerCommands.feedPaper(255);
                         Log.d("getAsyncEscPosPrinter", "printerCommands.feedPaper()");
 
                         printerCommands.cutPaper();
@@ -313,9 +192,6 @@ public class MyPrintService extends PrintService {
                 } catch (EscPosConnectionException e) {
                     e.printStackTrace();
                 }
-
-
-//                new AsyncBluetoothEscPosPrint(this).execute(this.getAsyncEscPosPrinter(BluetoothPrintersConnections.selectFirstPaired(), webView));
             }catch(Exception e)
             {
                 Log.d("createWebPrintJob Error",e.toString());
@@ -332,67 +208,19 @@ public class MyPrintService extends PrintService {
 
     @Override
     protected void onPrintJobQueued(PrintJob printJob) {
-
-        Intent intent = new Intent(MyPrintService.this, MainActivity.class);
-        intent.putExtra("data", printJob.getDocument().getData());
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-        printJob.start();
-        startActivity(intent);
-
-
 //        mProcessedPrintJobs.put(printJob.getId().describeContents(), printJob);
-//        if (printJob.isQueued()) {
-//            Log.d("myprinter", "queued: " + printJob.getId().toString());
-//            Log.d("myprinter", "document info: " + printJob.getDocument().getInfo());
-//            printJob.start();
-//        }
-//
-//        ///////////////////////
-//
-//        try {
-////            final byte[] buffer = new byte[4];
-////            @SuppressWarnings("unused")
-////            final int read = in.read(buffer);
-////            Log.d("myprinter", "first " + buffer.length + "bytes of content: " + toString(buffer));
-//            doPrintJobOnBluetoothPrinter(printJob);
-//        } catch (Exception e) {
-//            Log.d("myprinter", e.toString());
-//        } finally {
-////            try {
-////                in.close();
-////            } catch (IOException e) {
-////                assert true;
-////            }
-//        }
-//        ////////////////////////////
-//        printJob.complete();
-    }
+        if (printJob.isQueued()) {
+            Log.d("myprinter", "queued: " + printJob.getId().toString());
+            Log.d("myprinter", "document info: " + printJob.getDocument().getInfo());
+            printJob.start();
+        }
 
-    private static String toString(byte[] bytes) {
-        final StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(b).append(',');
-        }
-        if (sb.length() != 0) {
-            sb.setLength(sb.length() - 1);
-        }
-        return sb.toString();
+        doPrintJobOnBluetoothPrinter(printJob);
     }
 
     @Override
     protected void onRequestCancelPrintJob(PrintJob printJob) {
         Log.d("myprinter", "canceled: " + printJob.getId().toString());
-
-//        mProcessedPrintJobs.put(printJob.getId().describeContents(), printJob);
-
-        //////////////////////
-//        Intent intent = new Intent(this, MainActivity.class);
-//        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-//        intent.putExtra(INTENT_EXTRA_PRINT_JOB_ID, printJob.getId());
-//        intent.putExtra(INTENT_EXTRA_ACTION_TYPE, ACTION_TYPE_ON_REQUEST_CANCEL_PRINT_JOB);
-//        startActivity(intent);
-
         printJob.cancel();
     }
 
