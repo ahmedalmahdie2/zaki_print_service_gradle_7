@@ -125,18 +125,19 @@ public class MyPrintService extends PrintService {
             String base64String= Base64.encodeToString(tempBytes, 0);
             byte[] tempBytes02 = Base64.decode(base64String, 0);
             Log.d("bytearray base64", base64String != null ? base64String : "is NULL!");
-            FileDescriptor fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-            val pdfRenderer = PdfRenderer(fileDescriptor)
-
-            val page = pdfRenderer.openPage(pageNumber)
-
-            val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
-            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-
-            page.close()
-            pdfRenderer.close()
-
-            return bitmap
+            
+//            FileDescriptor fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+//            val pdfRenderer = PdfRenderer(fileDescriptor)
+//
+//            val page = pdfRenderer.openPage(pageNumber)
+//
+//            val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
+//            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+//
+//            page.close()
+//            pdfRenderer.close()
+//
+//            return bitmap
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
