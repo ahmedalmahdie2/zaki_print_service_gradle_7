@@ -21,6 +21,7 @@ import androidx.print.PrintHelper;
 import com.dantsu.escposprinter.EscPosPrinterCommands;
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections;
 import com.dantsu.escposprinter.exceptions.EscPosConnectionException;
+import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
 
 public class MainActivity extends Activity {
     private static final int PERMISSION_BLUETOOTH = 1;
@@ -42,6 +43,9 @@ public class MainActivity extends Activity {
                     .add(R.id.container, new PlaceholderFragment())
                     .commit();
         }
+
+        PDFBoxResourceLoader.init(getApplicationContext());
+
     }
 
 

@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.ImageReader;
+import android.os.Build;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.print.PrintAttributes;
@@ -22,11 +23,15 @@ import android.util.Base64;
 import android.util.Log;
 import android.util.SparseArray;
 
+import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
 
 import com.dantsu.escposprinter.EscPosPrinterCommands;
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections;
 import com.dantsu.escposprinter.exceptions.EscPosConnectionException;
+import com.tom_roush.pdfbox.pdmodel.PDDocument;
+import com.tom_roush.pdfbox.rendering.PDFRenderer;
+import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
 
 import net.sf.andpdf.nio.ByteBuffer;
 
@@ -34,6 +39,7 @@ import org.zakky.myprintservice.util.PrintUtils;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileDescriptor;
@@ -68,6 +74,7 @@ public class MyPrintService extends PrintService {
 
     @Override
     public void onCreate() {
+
         mThermalPrinter = new PrinterInfo.Builder(generatePrinterId(PRINTER_ID),
                 PRINTER, PrinterInfo.STATUS_IDLE).build();
     }
@@ -122,22 +129,24 @@ public class MyPrintService extends PrintService {
             byte[] tempBytes = new byte[bb.remaining()];
             bb.get(tempBytes, 0, tempBytes.length);
 
-            String base64String= Base64.encodeToString(tempBytes, 0);
-            byte[] tempBytes02 = Base64.decode(base64String, 0);
-            Log.d("bytearray base64", base64String != null ? base64String : "is NULL!");
-            
-//            FileDescriptor fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-//            val pdfRenderer = PdfRenderer(fileDescriptor)
-//
-//            val page = pdfRenderer.openPage(pageNumber)
-//
-//            val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
+//            String base64String= Base64.encodeToString(tempBytes, 0);
+//            byte[] tempBytes02 = Base64.decode(base64String, 0);
+//            Log.d("bytearray base64", base64String != null ? base64String : "is NULL!");
+            PDDocument document = PDDocument.load(tempBytes);
+            PDFRenderer pdfRenderer = new PDFRenderer(document);
+
+            bitmap = pdfRenderer.renderImage(0, 1, Bitmap.Config.ARGB_8888);
+            final File bitmapFile = new File(getFilesDir(), info.getLabel() + ".jpg");
+            FileOutputStream fileOut = new FileOutputStream(bitmapFile);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fileOut);
+
+            fileOut.close();
+
+//            bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
 //            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-//
-//            page.close()
-//            pdfRenderer.close()
-//
-//            return bitmap
+
+//            page.close();
+//            pdfRenderer.close();
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -160,15 +169,15 @@ public class MyPrintService extends PrintService {
                     Log.d("getAsyncEscPosPrinter", "printerCommands.reset()");
 
 //////////////// rest of code to convert inputstream to bitmap then to bytes ///////////////////////
-//                    Bitmap rescaledBitmap = Bitmap.createScaledBitmap(
-//                        bitmap,
-//                        384,
-//                        Math.round(((float) bitmap.getHeight()) * ((float) 384) / ((float) bitmap.getWidth())),
-//                        true
-//                    );
+                    Bitmap rescaledBitmap = Bitmap.createScaledBitmap(
+                        bitmap,
+                        384,
+                        Math.round(((float) bitmap.getHeight()) * ((float) 384) / ((float) bitmap.getWidth())),
+                        true
+                    );
 
                     if(bitmap != null) {
-                        bytes = printerCommands.bitmapToBytes(bitmap);
+                        bytes = printerCommands.bitmapToBytes(rescaledBitmap);
                     }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
                     Log.d("byteResult size", "" + bytes.length);
@@ -231,14 +240,24 @@ class ThermalPrinterDiscoverySession extends PrinterDiscoverySession {
     private PrinterInfo printerInfo;
 
     ThermalPrinterDiscoverySession(PrinterInfo printerInfo) {
-        PrinterCapabilitiesInfo capabilities =
-                new PrinterCapabilitiesInfo.Builder(printerInfo.getId())
-                        .addMediaSize(PrintAttributes.MediaSize.ISO_A5, true)
-                        .addResolution(new PrintAttributes.Resolution("1234","Default",200,200), true)
-                        .setColorModes(PrintAttributes.COLOR_MODE_MONOCHROME, PrintAttributes.COLOR_MODE_MONOCHROME)
-                        .build();
-        this.printerInfo = new PrinterInfo.Builder(printerInfo)
-                .setCapabilities(capabilities)
+        PrintAttributes.MediaSize custom58 = new PrintAttributes.MediaSize("58Thermal" , "58mm_Thermal", 2600,7000);
+        custom58.asPortrait();
+        PrintAttributes.MediaSize custom80 = new PrintAttributes.MediaSize("80Thermal" , "80mm_Thermal", 3100,7000);
+        custom80.asPortrait();
+
+        PrinterCapabilitiesInfo.Builder capabilitiesBuilder =
+                new PrinterCapabilitiesInfo.Builder(printerInfo.getId());
+
+        capabilitiesBuilder.addMediaSize(custom58, true);
+        capabilitiesBuilder.addMediaSize(custom80, false);
+        capabilitiesBuilder.addMediaSize(PrintAttributes.MediaSize.ISO_A3, false);
+        capabilitiesBuilder.addMediaSize(PrintAttributes.MediaSize.ISO_A4, false);
+        capabilitiesBuilder.addMediaSize(PrintAttributes.MediaSize.ISO_A5, false);
+        capabilitiesBuilder.addMediaSize(PrintAttributes.MediaSize.ISO_A7, false);
+
+        capabilitiesBuilder.addResolution(new PrintAttributes.Resolution("1234","Default",100,100), true);
+        capabilitiesBuilder.setColorModes(PrintAttributes.COLOR_MODE_MONOCHROME, PrintAttributes.COLOR_MODE_MONOCHROME);this.printerInfo = new PrinterInfo.Builder(printerInfo)
+                .setCapabilities(capabilitiesBuilder.build())
                 .build();
     }
 
