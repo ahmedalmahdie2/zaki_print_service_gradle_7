@@ -54,6 +54,7 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 
 public class MyPrintService extends PrintService {
@@ -87,9 +88,7 @@ public class MyPrintService extends PrintService {
 
     void doPrintJobOnBluetoothPrinter(PrintJob printJob)
     {
-        byte[] bytes = null;
-        Bitmap bitmap = null;
-
+        Bitmap[] bitmaps = null;
 
         if (printJob.isQueued()) {
             printJob.start();
@@ -135,19 +134,11 @@ public class MyPrintService extends PrintService {
             PDDocument document = PDDocument.load(tempBytes);
             PDFRenderer pdfRenderer = new PDFRenderer(document);
 
-            bitmap = pdfRenderer.renderImage(0, 1, Bitmap.Config.ARGB_8888);
-            final File bitmapFile = new File(getFilesDir(), info.getLabel() + ".jpg");
-            FileOutputStream fileOut = new FileOutputStream(bitmapFile);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fileOut);
-
-            fileOut.close();
-
-//            bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
-//            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-
-//            page.close();
-//            pdfRenderer.close();
-
+            bitmaps = new Bitmap[document.getNumberOfPages()];
+            for(int i =0; i< bitmaps.length; i++)
+            {
+                bitmaps[i] = pdfRenderer.renderImage(i, 2, Bitmap.Config.ARGB_8888);
+            }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -168,37 +159,17 @@ public class MyPrintService extends PrintService {
                     printerCommands.reset();
                     Log.d("getAsyncEscPosPrinter", "printerCommands.reset()");
 
-//////////////// rest of code to convert inputstream to bitmap then to bytes ///////////////////////
-                    Bitmap rescaledBitmap = Bitmap.createScaledBitmap(
-                        bitmap,
-                        384,
-                        Math.round(((float) bitmap.getHeight()) * ((float) 384) / ((float) bitmap.getWidth())),
-                        true
-                    );
 
-                    if(bitmap != null) {
-                        bytes = printerCommands.bitmapToBytes(rescaledBitmap);
-                    }
-////////////////////////////////////////////////////////////////////////////////////////////////////
-                    Log.d("byteResult size", "" + bytes.length);
-
-                    if(bytes != null && bytes.length > 0) {
-
-                        printerCommands.printImage(bytes);
-//                      printerCommands.printImage("This is A Test file print. \n please be cautious as to not consider this a real file!".getBytes());
-//                      printerCommands.printText(base64String);
-                        Log.d("getAsyncEscPosPrinter", "printerCommands.printImage()");
-
-                        printerCommands.feedPaper(255);
-                        Log.d("getAsyncEscPosPrinter", "printerCommands.feedPaper()");
-
-                        printerCommands.cutPaper();
-                        Log.d("getAsyncEscPosPrinter", "printerCommands.cutPaper()");
-                    }
-                    else
+                    for(int i =0; i < bitmaps.length; i++)
                     {
-                        Log.d("getAsyncEscPosPrinter", "empty image bytes");
+                        printerCommands.printImage(printerCommands.bitmapToBytes(bitmaps[i]));
                     }
+                    printerCommands.feedPaper(255);
+                    printerCommands.feedPaper(255);
+                    Log.d("getAsyncEscPosPrinter", "printerCommands.feedPaper()");
+
+                    printerCommands.cutPaper();
+                    Log.d("getAsyncEscPosPrinter", "printerCommands.cutPaper()");
                 } catch (EscPosConnectionException e) {
                     e.printStackTrace();
                 }
@@ -218,7 +189,6 @@ public class MyPrintService extends PrintService {
 
     @Override
     protected void onPrintJobQueued(PrintJob printJob) {
-//        mProcessedPrintJobs.put(printJob.getId().describeContents(), printJob);
         if (printJob.isQueued()) {
             Log.d("myprinter", "queued: " + printJob.getId().toString());
             Log.d("myprinter", "document info: " + printJob.getDocument().getInfo());
@@ -240,9 +210,9 @@ class ThermalPrinterDiscoverySession extends PrinterDiscoverySession {
     private PrinterInfo printerInfo;
 
     ThermalPrinterDiscoverySession(PrinterInfo printerInfo) {
-        PrintAttributes.MediaSize custom58 = new PrintAttributes.MediaSize("58Thermal" , "58mm_Thermal", 2600,7000);
+        PrintAttributes.MediaSize custom58 = new PrintAttributes.MediaSize("58Thermal" , "58mm_Thermal", 2800,7000);
         custom58.asPortrait();
-        PrintAttributes.MediaSize custom80 = new PrintAttributes.MediaSize("80Thermal" , "80mm_Thermal", 3100,7000);
+        PrintAttributes.MediaSize custom80 = new PrintAttributes.MediaSize("80Thermal" , "80mm_Thermal", 3300,7000);
         custom80.asPortrait();
 
         PrinterCapabilitiesInfo.Builder capabilitiesBuilder =
@@ -255,8 +225,9 @@ class ThermalPrinterDiscoverySession extends PrinterDiscoverySession {
         capabilitiesBuilder.addMediaSize(PrintAttributes.MediaSize.ISO_A5, false);
         capabilitiesBuilder.addMediaSize(PrintAttributes.MediaSize.ISO_A7, false);
 
-        capabilitiesBuilder.addResolution(new PrintAttributes.Resolution("1234","Default",100,100), true);
-        capabilitiesBuilder.setColorModes(PrintAttributes.COLOR_MODE_MONOCHROME, PrintAttributes.COLOR_MODE_MONOCHROME);this.printerInfo = new PrinterInfo.Builder(printerInfo)
+        capabilitiesBuilder.addResolution(new PrintAttributes.Resolution("1234","Default",400,400), true);
+        capabilitiesBuilder.setColorModes(PrintAttributes.COLOR_MODE_MONOCHROME, PrintAttributes.COLOR_MODE_MONOCHROME);
+        this.printerInfo = new PrinterInfo.Builder(printerInfo)
                 .setCapabilities(capabilitiesBuilder.build())
                 .build();
     }
