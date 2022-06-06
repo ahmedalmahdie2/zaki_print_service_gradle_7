@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.media.ImageReader;
 import android.os.Build;
 import android.os.Environment;
@@ -76,38 +77,141 @@ public class MyPrintService extends PrintService {
         return new ThermalPrinterDiscoverySession(mThermalPrinter);
     }
 //
-//    Bitmap CropBitmapTransparency(Bitmap sourceBitmap)
-//    {
-//        int minX = sourceBitmap.getWidth();
-//        int minY = sourceBitmap.getHeight();
-//        int maxX = -1;
-//        int maxY = -1;
-//        for(int y = 0; y < sourceBitmap.getHeight(); y++)
-//        {
-//            for(int x = 0; x < sourceBitmap.getWidth(); x++)
-//            {
-//                int alpha = (sourceBitmap.getPixel(x, y) >> 24) & 255;
-//                if(alpha > 0)   // pixel is not 100% transparent
-//                {
-//                    if(x < minX)
-//                        minX = x;
-//                    if(x > maxX)
-//                        maxX = x;
-//                    if(y < minY)
-//                        minY = y;
-//                    if(y > maxY)
-//                        maxY = y;
-//                }
-//            }
-//        }
-//        if((maxX < minX) || (maxY < minY))
-//            return null; // Bitmap is entirely transparent
-//
-//        // crop bitmap to non-transparent area and return:
-//        return Bitmap.createBitmap(sourceBitmap, minX, minY, (maxX - minX) + 1, (maxY - minY) + 1);
-//    }
+    Bitmap CropBitmapTransparency(Bitmap sourceBitmap)
+    {
+        int minX = sourceBitmap.getWidth();
+        int minY = sourceBitmap.getHeight();
+        int maxX = -1;
+        int maxY = -1;
+        for(int y = 0; y < sourceBitmap.getHeight(); y++)
+        {
+            for(int x = 0; x < sourceBitmap.getWidth(); x++)
+            {
+                int alpha = (sourceBitmap.getPixel(x, y) >> 24) & 255;
+                if(alpha > 0)   // pixel is not 100% transparent
+                {
+                    if(x < minX)
+                        minX = x;
+                    if(x > maxX)
+                        maxX = x;
+                    if(y < minY)
+                        minY = y;
+                    if(y > maxY)
+                        maxY = y;
+                }
+            }
+        }
+        if((maxX < minX) || (maxY < minY))
+            return null; // Bitmap is entirely transparent
 
-    void doPrintJobOnBluetoothPrinter(PrintJob printJob)
+        // crop bitmap to non-transparent area and return:
+        return Bitmap.createBitmap(sourceBitmap, minX, minY, (maxX - minX) + 1, (maxY - minY) + 1);
+    }
+
+    Bitmap getScaledBitmap(Bitmap bitmap, float width, boolean filter)
+    {
+        return  Bitmap.createScaledBitmap(
+                        bitmap,
+                (int) width,
+                        Math.round(((float) bitmap.getHeight()) * width / ((float) bitmap.getWidth())),
+                filter
+                );
+    }
+
+
+    private static Bitmap removeMargins2(Bitmap bmp, int color) {
+        // TODO Auto-generated method stub
+
+
+        long dtMili = System.currentTimeMillis();
+        int MTop = 0, MBot = 0, MLeft = 0, MRight = 0;
+        boolean found1 = false, found2 = false;
+
+        int[] bmpIn = new int[bmp.getWidth() * bmp.getHeight()];
+        int[][] bmpInt = new int[bmp.getWidth()][bmp.getHeight()];
+
+        bmp.getPixels(bmpIn, 0, bmp.getWidth(), 0, 0, bmp.getWidth(),
+                bmp.getHeight());
+
+        for (int ii = 0, contX = 0, contY = 0; ii < bmpIn.length; ii++) {
+            bmpInt[contX][contY] = bmpIn[ii];
+            contX++;
+            if (contX >= bmp.getWidth()) {
+                contX = 0;
+                contY++;
+                if (contY >= bmp.getHeight()) {
+                    break;
+                }
+            }
+        }
+
+        for (int hP = 0; hP < bmpInt[0].length && !found2; hP++) {
+            // looking for MTop
+            for (int wP = 0; wP < bmpInt.length && !found2; wP++) {
+                if (bmpInt[wP][hP] != color) {
+                    Log.e("MTop 2", "Pixel found @" + hP);
+                    MTop = hP;
+                    found2 = true;
+                    break;
+                }
+            }
+        }
+        found2 = false;
+
+        for (int hP = bmpInt[0].length - 1; hP >= 0 && !found2; hP--) {
+            // looking for MBot
+            for (int wP = 0; wP < bmpInt.length && !found2; wP++) {
+                if (bmpInt[wP][hP] != color) {
+                    Log.e("MBot 2", "Pixel found @" + hP);
+                    MBot = bmp.getHeight() - hP;
+                    found2 = true;
+                    break;
+                }
+            }
+        }
+        found2 = false;
+
+        for (int wP = 0; wP < bmpInt.length && !found2; wP++) {
+            // looking for MLeft
+            for (int hP = 0; hP < bmpInt[0].length && !found2; hP++) {
+                if (bmpInt[wP][hP] != color) {
+                    Log.e("MLeft 2", "Pixel found @" + wP);
+                    MLeft = wP;
+                    found2 = true;
+                    break;
+                }
+            }
+        }
+        found2 = false;
+
+        for (int wP = bmpInt.length - 1; wP >= 0 && !found2; wP--) {
+            // looking for MRight
+            for (int hP = 0; hP < bmpInt[0].length && !found2; hP++) {
+                if (bmpInt[wP][hP] != color) {
+                    Log.e("MRight 2", "Pixel found @" + wP);
+                    MRight = bmp.getWidth() - wP;
+                    found2 = true;
+                    break;
+                }
+            }
+
+        }
+        found2 = false;
+
+        int sizeY = bmp.getHeight() - MBot - MTop, sizeX = bmp.getWidth()
+                - MRight - MLeft;
+
+        Bitmap bmp2 = Bitmap.createBitmap(bmp, MLeft, MTop, sizeX, sizeY);
+        dtMili = (System.currentTimeMillis() - dtMili);
+        Log.e("Margin   2",
+                "Time needed " + dtMili + "mSec\nh:" + bmp.getWidth() + "w:"
+                        + bmp.getHeight() + "\narray x:" + bmpInt.length + "y:"
+                        + bmpInt[0].length);
+        return bmp2;
+    }
+
+
+        void doPrintJobOnBluetoothPrinter(PrintJob printJob)
     {
         Bitmap[] bitmaps = null;
 
@@ -160,12 +264,11 @@ public class MyPrintService extends PrintService {
 
             for(int i =0; i< bitmaps.length; i++)
             {
-                bitmaps[i] = pdfRenderer.renderImage(i, 1, Bitmap.Config.RGB_565);
+                bitmaps[i] = removeMargins2(pdfRenderer.renderImage(i, 4, Bitmap.Config.RGB_565), Color.WHITE);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_GRANTED) {
 
@@ -181,10 +284,24 @@ public class MyPrintService extends PrintService {
                     Log.d("getAsyncEscPosPrinter", "printerCommands.reset()");
 
 
+                    ArrayList<Byte> allBytes = new ArrayList<Byte>();
+
                     for(int i =0; i < bitmaps.length; i++)
                     {
-                        printerCommands.printImage(printerCommands.bitmapToBytes(bitmaps[i]));
+                        final byte[] bytes = printerCommands.bitmapToBytes(CropBitmapTransparency(bitmaps[i]));
+                        for(int j =0; j < bytes.length; j++)
+                        {
+                            allBytes.add(bytes[j]);
+                        }
                     }
+                    Byte[] array = (Byte[]) allBytes.toArray(new Byte[allBytes.size()]);
+                    byte[] array02 = new byte[array.length];
+                    int i = 0;
+                    for(Byte b: array)
+                        array02[i++] = b.byteValue();
+
+                    printerCommands.printImage(array02);
+
                     printerCommands.feedPaper(255);
                     printerCommands.feedPaper(255);
                     Log.d("getAsyncEscPosPrinter", "printerCommands.feedPaper()");
