@@ -60,16 +60,6 @@ import java.util.Map;
 public class MyPrintService extends PrintService {
     private static final String PRINTER = "iZAM Print Service";
     private static final String PRINTER_ID = "aaa";
-
-    List<PrinterInfo> printers = null;
-    PrinterInfo printerInfo = null;
-    PrinterInfo.Builder builder = null;
-    private final SparseArray<PrintJob> mProcessedPrintJobs = new SparseArray<PrintJob>();
-    static final String INTENT_EXTRA_ACTION_TYPE = "INTENT_EXTRA_ACTION_TYPE";
-    static final String INTENT_EXTRA_PRINT_JOB_ID = "INTENT_EXTRA_PRINT_JOB_ID";
-    static final int ACTION_TYPE_ON_PRINT_JOB_PENDING = 1;
-    static final int ACTION_TYPE_ON_REQUEST_CANCEL_PRINT_JOB = 2;
-
     PrinterInfo mThermalPrinter;
 
 
@@ -85,6 +75,37 @@ public class MyPrintService extends PrintService {
         Log.d("myprinter", "MyPrintService#onCreatePrinterDiscoverySession() called");
         return new ThermalPrinterDiscoverySession(mThermalPrinter);
     }
+//
+//    Bitmap CropBitmapTransparency(Bitmap sourceBitmap)
+//    {
+//        int minX = sourceBitmap.getWidth();
+//        int minY = sourceBitmap.getHeight();
+//        int maxX = -1;
+//        int maxY = -1;
+//        for(int y = 0; y < sourceBitmap.getHeight(); y++)
+//        {
+//            for(int x = 0; x < sourceBitmap.getWidth(); x++)
+//            {
+//                int alpha = (sourceBitmap.getPixel(x, y) >> 24) & 255;
+//                if(alpha > 0)   // pixel is not 100% transparent
+//                {
+//                    if(x < minX)
+//                        minX = x;
+//                    if(x > maxX)
+//                        maxX = x;
+//                    if(y < minY)
+//                        minY = y;
+//                    if(y > maxY)
+//                        maxY = y;
+//                }
+//            }
+//        }
+//        if((maxX < minX) || (maxY < minY))
+//            return null; // Bitmap is entirely transparent
+//
+//        // crop bitmap to non-transparent area and return:
+//        return Bitmap.createBitmap(sourceBitmap, minX, minY, (maxX - minX) + 1, (maxY - minY) + 1);
+//    }
 
     void doPrintJobOnBluetoothPrinter(PrintJob printJob)
     {
@@ -128,20 +149,20 @@ public class MyPrintService extends PrintService {
             byte[] tempBytes = new byte[bb.remaining()];
             bb.get(tempBytes, 0, tempBytes.length);
 
-//            String base64String= Base64.encodeToString(tempBytes, 0);
+            String base64String= Base64.encodeToString(tempBytes, 0);
 //            byte[] tempBytes02 = Base64.decode(base64String, 0);
-//            Log.d("bytearray base64", base64String != null ? base64String : "is NULL!");
+            Log.d("bytearray base64", base64String != null ? base64String : "is NULL!");
             PDDocument document = PDDocument.load(tempBytes);
             PDFRenderer pdfRenderer = new PDFRenderer(document);
 
             bitmaps = new Bitmap[document.getNumberOfPages()];
+            Log.d("bitmaps", bitmaps.length + "");
+
             for(int i =0; i< bitmaps.length; i++)
             {
-                bitmaps[i] = pdfRenderer.renderImage(i, 2, Bitmap.Config.ARGB_8888);
+                bitmaps[i] = pdfRenderer.renderImage(i, 1, Bitmap.Config.RGB_565);
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -210,9 +231,9 @@ class ThermalPrinterDiscoverySession extends PrinterDiscoverySession {
     private PrinterInfo printerInfo;
 
     ThermalPrinterDiscoverySession(PrinterInfo printerInfo) {
-        PrintAttributes.MediaSize custom58 = new PrintAttributes.MediaSize("58Thermal" , "58mm_Thermal", 2800,7000);
+        PrintAttributes.MediaSize custom58 = new PrintAttributes.MediaSize("58Thermal" , "58mm_Thermal", 2200,5000);
         custom58.asPortrait();
-        PrintAttributes.MediaSize custom80 = new PrintAttributes.MediaSize("80Thermal" , "80mm_Thermal", 3300,7000);
+        PrintAttributes.MediaSize custom80 = new PrintAttributes.MediaSize("80Thermal" , "80mm_Thermal", 3000,7100);
         custom80.asPortrait();
 
         PrinterCapabilitiesInfo.Builder capabilitiesBuilder =
@@ -224,8 +245,9 @@ class ThermalPrinterDiscoverySession extends PrinterDiscoverySession {
         capabilitiesBuilder.addMediaSize(PrintAttributes.MediaSize.ISO_A4, false);
         capabilitiesBuilder.addMediaSize(PrintAttributes.MediaSize.ISO_A5, false);
         capabilitiesBuilder.addMediaSize(PrintAttributes.MediaSize.ISO_A7, false);
+        capabilitiesBuilder.setMinMargins(PrintAttributes.Margins.NO_MARGINS);
 
-        capabilitiesBuilder.addResolution(new PrintAttributes.Resolution("1234","Default",400,400), true);
+        capabilitiesBuilder.addResolution(new PrintAttributes.Resolution("200dpi","paperRoll",203,203), true);
         capabilitiesBuilder.setColorModes(PrintAttributes.COLOR_MODE_MONOCHROME, PrintAttributes.COLOR_MODE_MONOCHROME);
         this.printerInfo = new PrinterInfo.Builder(printerInfo)
                 .setCapabilities(capabilitiesBuilder.build())
