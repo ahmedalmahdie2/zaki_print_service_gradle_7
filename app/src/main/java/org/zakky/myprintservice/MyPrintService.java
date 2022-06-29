@@ -61,6 +61,7 @@ import java.util.Map;
 public class MyPrintService extends PrintService {
     private static final String PRINTER = "iZAM Print Service";
     private static final String PRINTER_ID = "aaa";
+    private static final float PRINTER_WIDTH = 534;
     PrinterInfo mThermalPrinter;
 
 
@@ -156,6 +157,7 @@ public class MyPrintService extends PrintService {
                 }
             }
         }
+
         found2 = false;
 
         for (int hP = bmpInt[0].length - 1; hP >= 0 && !found2; hP--) {
@@ -262,10 +264,21 @@ public class MyPrintService extends PrintService {
             bitmaps = new Bitmap[document.getNumberOfPages()];
             Log.d("bitmaps", bitmaps.length + "");
 
-            for(int i =0; i< bitmaps.length; i++)
+
+
+            float scale = 1;
+            if(bitmaps.length > 0)
             {
-                bitmaps[i] = removeMargins2(pdfRenderer.renderImage(i, 4, Bitmap.Config.RGB_565), Color.WHITE);
+                final Bitmap tempBitmap = pdfRenderer.renderImage(0, 1, Bitmap.Config.RGB_565);
+                scale = PRINTER_WIDTH / (float) tempBitmap.getWidth();
+                Log.d("scale", "" + scale + ", Width: ");
             }
+
+            for(int i = 0; i < bitmaps.length; i++)
+            {
+                bitmaps[i] = CropBitmapTransparency(removeMargins2(pdfRenderer.renderImage(i, scale, Bitmap.Config.RGB_565), Color.WHITE));
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -288,7 +301,7 @@ public class MyPrintService extends PrintService {
 
                     for(int i =0; i < bitmaps.length; i++)
                     {
-                        final byte[] bytes = printerCommands.bitmapToBytes(CropBitmapTransparency(bitmaps[i]));
+                        final byte[] bytes = printerCommands.bitmapToBytes(bitmaps[i]);
                         for(int j =0; j < bytes.length; j++)
                         {
                             allBytes.add(bytes[j]);
