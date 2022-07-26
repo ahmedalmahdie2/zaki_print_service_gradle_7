@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="org.zakky.myprintservice">
+    package="com.izam.android.printservice">
 
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -13,9 +13,9 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.ZakiPrintService">
+        android:theme="@style/Theme.IzamPrintService">
 
-        <service android:name=".MyPrintService"
+        <service android:name=".IzamPrintService"
             android:permission="android.permission.BIND_PRINT_SERVICE"
             android:exported="true">
             <intent-filter>
@@ -27,7 +27,7 @@
                 android:resource="@xml/printservice" />
         </service>
     <activity
-        android:name="org.zakky.myprintservice.MainActivity"
+        android:name="com.izam.android.printservice.MainActivity"
         android:label="@string/app_name"
         android:exported="true">
         <intent-filter>

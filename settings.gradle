@@ -7,6 +7,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ZakiPrintService"
+rootProject.name = "iZAMPrintService"
 include ':app'
 include ':escposprinter'

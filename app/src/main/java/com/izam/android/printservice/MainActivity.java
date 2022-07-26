@@ -1,4 +1,4 @@
-package org.zakky.myprintservice;
+package com.izam.android.printservice;
 
 import android.Manifest;
 import android.app.Activity;
@@ -17,10 +17,6 @@ import android.view.ViewGroup;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.print.PrintHelper;
-
-import com.dantsu.escposprinter.EscPosPrinterCommands;
-import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections;
-import com.dantsu.escposprinter.exceptions.EscPosConnectionException;
 import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
 
 public class MainActivity extends Activity {

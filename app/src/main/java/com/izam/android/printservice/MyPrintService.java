@@ -1,30 +1,19 @@
-package org.zakky.myprintservice;
+package com.izam.android.printservice;
 
 import android.Manifest;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.media.ImageReader;
-import android.os.Build;
-import android.os.Environment;
-import android.os.ParcelFileDescriptor;
 import android.print.PrintAttributes;
-import android.print.PrintDocumentInfo;
 import android.print.PrintJobInfo;
 import android.print.PrinterCapabilitiesInfo;
 import android.print.PrinterId;
 import android.print.PrinterInfo;
-import android.printservice.PrintDocument;
 import android.printservice.PrintJob;
 import android.printservice.PrintService;
 import android.printservice.PrinterDiscoverySession;
 import android.util.Base64;
 import android.util.Log;
-import android.util.SparseArray;
-
-import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
 
 import com.dantsu.escposprinter.EscPosPrinterCommands;
@@ -32,33 +21,19 @@ import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnection
 import com.dantsu.escposprinter.exceptions.EscPosConnectionException;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.rendering.PDFRenderer;
-import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
-
 import net.sf.andpdf.nio.ByteBuffer;
-
-import org.zakky.myprintservice.util.PrintUtils;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedWriter;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileDescriptor;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 
-public class MyPrintService extends PrintService {
+class IzamPrintService extends PrintService {
     private static final String PRINTER = "iZAM Print Service";
     private static final String PRINTER_ID = "aaa";
     private static final float PRINTER_WIDTH = 534;
@@ -67,14 +42,13 @@ public class MyPrintService extends PrintService {
 
     @Override
     public void onCreate() {
-
         mThermalPrinter = new PrinterInfo.Builder(generatePrinterId(PRINTER_ID),
                 PRINTER, PrinterInfo.STATUS_IDLE).build();
     }
 
     @Override
     protected PrinterDiscoverySession onCreatePrinterDiscoverySession() {
-        Log.d("myprinter", "MyPrintService#onCreatePrinterDiscoverySession() called");
+        Log.d("myprinter", "IzamPrintService#onCreatePrinterDiscoverySession() called");
         return new ThermalPrinterDiscoverySession(mThermalPrinter);
     }
 //

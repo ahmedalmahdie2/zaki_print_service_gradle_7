@@ -1,4 +1,4 @@
-package org.zakky.myprintservice.util;
+package com.izam.android.printservice.util;
 
 
 import java.io.File;
