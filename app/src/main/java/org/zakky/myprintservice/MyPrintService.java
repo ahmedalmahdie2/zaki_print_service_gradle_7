@@ -212,8 +212,7 @@ public class MyPrintService extends PrintService {
         return bmp2;
     }
 
-
-        void doPrintJobOnBluetoothPrinter(PrintJob printJob)
+    void doPrintJobOnBluetoothPrinter(PrintJob printJob)
     {
         Bitmap[] bitmaps = null;
 
@@ -222,7 +221,6 @@ public class MyPrintService extends PrintService {
         }
         final PrintJobInfo info = printJob.getInfo();
         final File file = new File(getFilesDir(), info.getLabel());
-
 
         InputStream in = null;
         FileOutputStream out = null;
@@ -245,7 +243,6 @@ public class MyPrintService extends PrintService {
 
         }
 
-
         FileChannel channel = null;
         try {
             RandomAccessFile raf = new RandomAccessFile(file, "r");
@@ -263,8 +260,6 @@ public class MyPrintService extends PrintService {
 
             bitmaps = new Bitmap[document.getNumberOfPages()];
             Log.d("bitmaps", bitmaps.length + "");
-
-
 
             float scale = 1;
             if(bitmaps.length > 0)
@@ -295,7 +290,6 @@ public class MyPrintService extends PrintService {
 
                     printerCommands.reset();
                     Log.d("getAsyncEscPosPrinter", "printerCommands.reset()");
-
 
                     ArrayList<Byte> allBytes = new ArrayList<Byte>();
 
@@ -330,12 +324,12 @@ public class MyPrintService extends PrintService {
             }
         }
         printJob.complete();
-        try{
+//        try{
 //            in.close();
-        } catch(Exception ee)
-        {
-
-        }
+//        } catch(Exception ee)
+//        {
+//
+//        }
     }
 
     @Override
@@ -354,8 +348,8 @@ public class MyPrintService extends PrintService {
         Log.d("myprinter", "canceled: " + printJob.getId().toString());
         printJob.cancel();
     }
-
 }
+
 class ThermalPrinterDiscoverySession extends PrinterDiscoverySession {
 
     private PrinterInfo printerInfo;
