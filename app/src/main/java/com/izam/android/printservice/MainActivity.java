@@ -21,12 +21,18 @@ import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
 
 public class MainActivity extends Activity {
     private static final int PERMISSION_BLUETOOTH = 1;
+    static Bundle _savedInstanceState = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        _savedInstanceState = savedInstanceState;
+        initializePrintService();
+    }
 
+    public void initializePrintService()
+    {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED) {
             Log.d("bluetooth permission","Requested");
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH}, PERMISSION_BLUETOOTH);
@@ -34,7 +40,7 @@ public class MainActivity extends Activity {
             Log.d("bluetooth permission","Granted");
         }
 
-        if (savedInstanceState == null) {
+        if (_savedInstanceState == null) {
             getFragmentManager().beginTransaction()
                     .add(R.id.container, new PlaceholderFragment())
                     .commit();
@@ -42,7 +48,6 @@ public class MainActivity extends Activity {
 
         PDFBoxResourceLoader.init(getApplicationContext());
     }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

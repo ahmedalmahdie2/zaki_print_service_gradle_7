@@ -39,7 +39,6 @@ class IzamPrintService extends PrintService {
     private static final float PRINTER_WIDTH = 534;
     PrinterInfo mThermalPrinter;
 
-
     @Override
     public void onCreate() {
         mThermalPrinter = new PrinterInfo.Builder(generatePrinterId(PRINTER_ID),
@@ -51,7 +50,7 @@ class IzamPrintService extends PrintService {
         Log.d("myprinter", "IzamPrintService#onCreatePrinterDiscoverySession() called");
         return new ThermalPrinterDiscoverySession(mThermalPrinter);
     }
-//
+
     Bitmap CropBitmapTransparency(Bitmap sourceBitmap)
     {
         int minX = sourceBitmap.getWidth();
@@ -96,7 +95,6 @@ class IzamPrintService extends PrintService {
 
     private static Bitmap removeMargins2(Bitmap bmp, int color) {
         // TODO Auto-generated method stub
-
 
         long dtMili = System.currentTimeMillis();
         int MTop = 0, MBot = 0, MLeft = 0, MRight = 0;
@@ -247,7 +245,6 @@ class IzamPrintService extends PrintService {
             {
                 bitmaps[i] = CropBitmapTransparency(removeMargins2(pdfRenderer.renderImage(i, scale, Bitmap.Config.RGB_565), Color.WHITE));
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         }
